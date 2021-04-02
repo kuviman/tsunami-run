@@ -36,7 +36,6 @@ struct Assets {
     house: Rc<ugli::Texture>,
     car: Rc<ugli::Texture>,
     tsunami: ugli::Texture,
-    background: ugli::Texture,
 }
 
 struct GameState {
@@ -88,15 +87,6 @@ impl GameState {
             scale,
         )
     }
-    pub fn draw_circle(&self, framebuffer: &mut ugli::Framebuffer, position: Vec3<f32>) {
-        let (screen_position, scale) = self.to_screen(framebuffer, position);
-        self.geng.draw_2d().circle(
-            framebuffer,
-            screen_position,
-            10.0 * scale as f32,
-            Color::WHITE,
-        );
-    }
     pub fn draw_texture(
         &self,
         framebuffer: &mut ugli::Framebuffer,
@@ -105,7 +95,7 @@ impl GameState {
         origin: Vec2<f32>,
         height: f32,
     ) {
-        if position.y > self.near_distance {
+        if position.y > self.near_distance + self.camera_near {
             return;
         }
         let (screen_position, scale) = self.to_screen(framebuffer, position);
@@ -128,12 +118,31 @@ impl GameState {
 
 impl geng::State for GameState {
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
-        self.draw_texture(
+        let framebuffer_size = framebuffer.size();
+        ugli::clear(framebuffer, Some(Color::rgb(0.0, 1.0, 0.0)), None);
+        let road = [
+            self.to_screen(framebuffer, vec3(-self.road_ratio, self.far_distance, 0.0))
+                .0,
+            self.to_screen(framebuffer, vec3(self.road_ratio, self.far_distance, 0.0))
+                .0,
+            self.to_screen(framebuffer, vec3(self.road_ratio, self.near_distance, 0.0))
+                .0,
+            self.to_screen(framebuffer, vec3(-self.road_ratio, self.near_distance, 0.0))
+                .0,
+        ];
+        self.geng.draw_2d().quad(
             framebuffer,
-            &self.assets.background,
-            vec3(0.0, self.near_distance, 0.0),
-            vec2(0.5, 0.0),
-            1.3,
+            AABB::pos_size(
+                vec2(0.0, framebuffer_size.y as f32 * 0.8),
+                framebuffer_size.map(|x| x as f32),
+            ),
+            Color::rgb(0.8, 0.8, 1.0),
+        );
+        self.geng.draw_2d().draw(
+            framebuffer,
+            &road,
+            Color::rgb(0.7, 0.7, 0.7),
+            ugli::DrawMode::TriangleFan,
         );
         let mut sprites: Vec<(&ugli::Texture, Vec3<f32>, Vec2<f32>, f32)> = Vec::new();
         for (position, texture) in &self.houses {
@@ -160,11 +169,6 @@ impl geng::State for GameState {
         for (texture, position, origin, height) in sprites {
             self.draw_texture(framebuffer, texture, position, origin, height);
         }
-
-        for y in self.far_distance.ceil() as u32..=self.near_distance.floor() as u32 {
-            self.draw_circle(framebuffer, vec3(self.road_ratio, y as f32, 0.0));
-            self.draw_circle(framebuffer, vec3(-self.road_ratio, y as f32, 0.0));
-        }
     }
     fn update(&mut self, delta_time: f64) {
         let delta_time = delta_time as f32;
@@ -176,28 +180,20 @@ impl geng::State for GameState {
             velocity.x += 1.0;
         }
         if self.geng.window().is_key_pressed(geng::Key::Up) {
-            velocity.y = 0.0;
+            velocity.y = -1.0;
         }
         self.position += velocity * delta_time;
-        let mut camera_speed = 0.0;
-        if self.geng.window().is_key_pressed(geng::Key::PageUp) {
-            camera_speed += 1.0;
-        }
-        if self.geng.window().is_key_pressed(geng::Key::PageDown) {
-            camera_speed -= 1.0;
-        }
+        self.position.x = clamp(self.position.x, -self.road_ratio..=self.road_ratio);
         self.tsunami_position += delta_time;
         self.look_at(self.position.y);
-        // self.near_distance += camera_speed * delta_time;
-        // self.far_distance += camera_speed * delta_time;
-        while self.near_distance > self.next_house {
+        while self.near_distance + self.camera_near > self.next_house {
             self.houses
                 .push((vec2(1.5, self.next_house), self.assets.house.clone()));
             self.houses
                 .push((vec2(-1.5, self.next_house), self.assets.house.clone()));
-            self.next_house += 1.5;
+            self.next_house += 1.0;
         }
-        while self.near_distance > self.next_obstacle {
+        while self.near_distance + self.camera_near > self.next_obstacle {
             self.obstacles.push((
                 vec2(
                     if rand::thread_rng().gen_bool(0.5) {
@@ -217,10 +213,13 @@ impl geng::State for GameState {
         }
         let near_distance = self.near_distance;
         let far_distance = self.far_distance;
-        self.houses
-            .retain(|&(position, _)| far_distance <= position.y && position.y <= near_distance);
-        self.obstacles
-            .retain(|&(position, _)| far_distance <= position.y && position.y <= near_distance);
+        let camera_near = self.camera_near;
+        self.houses.retain(|&(position, _)| {
+            far_distance <= position.y && position.y <= near_distance + camera_near
+        });
+        self.obstacles.retain(|&(position, _)| {
+            far_distance <= position.y && position.y <= near_distance + camera_near
+        });
     }
 }
 
