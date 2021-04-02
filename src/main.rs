@@ -35,6 +35,7 @@ struct Assets {
     character: Animation,
     house: Rc<ugli::Texture>,
     tsunami: ugli::Texture,
+    background: ugli::Texture,
 }
 
 struct GameState {
@@ -122,7 +123,13 @@ impl GameState {
 
 impl geng::State for GameState {
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
-        ugli::clear(framebuffer, Some(Color::BLACK), None);
+        self.draw_texture(
+            framebuffer,
+            &self.assets.background,
+            vec3(0.0, self.near_distance, 0.0),
+            vec2(0.5, 0.0),
+            1.3,
+        );
         let mut sprites: Vec<(&ugli::Texture, Vec3<f32>, Vec2<f32>, f32)> = Vec::new();
         for (position, texture) in &self.houses {
             sprites.push((texture, position.extend(0.0), vec2(0.5, 0.0), 1.5));
