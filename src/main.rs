@@ -179,8 +179,8 @@ impl geng::State for GameState {
             self.houses
                 .push((vec2(1.5, self.next_house), self.assets.house.clone()));
             self.houses
-                .push((vec2(-2.5, self.next_house), self.assets.house.clone()));
-            self.next_house += 1.0;
+                .push((vec2(-1.5, self.next_house), self.assets.house.clone()));
+            self.next_house += 1.5;
         }
         self.character_animation += 3.0 * delta_time;
         while self.character_animation >= 1.0 {
