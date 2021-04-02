@@ -1,0 +1,35 @@
+name: CI
+on: push
+
+jobs:
+  flow:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: wasm32-unknown-unknown
+
+      - name: Install cargo-geng
+        run: |
+          cargo install cargo-geng --git https://github.com/kuviman/geng
+          cargo install wasm-bindgen-cli
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: geng
+          args: build --release --target wasm32-unknown-unknown
+
+      - name: Deploy GitHub Pages
+        if: github.ref == 'refs/heads/master'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./target/geng
