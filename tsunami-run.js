@@ -347,6 +347,32 @@ async function init(input) {
         var ret = JSON.parse(getStringFromWasm0(arg0, arg1));
         return addHeapObject(ret);
     };
+    imports.wbg.__wbg_getRandomValues_57e4008f45f0e105 = handleError(function(arg0, arg1) {
+        getObject(arg0).getRandomValues(getObject(arg1));
+    });
+    imports.wbg.__wbg_randomFillSync_d90848a552cbd666 = handleError(function(arg0, arg1, arg2) {
+        getObject(arg0).randomFillSync(getArrayU8FromWasm0(arg1, arg2));
+    });
+    imports.wbg.__wbg_self_f865985e662246aa = handleError(function() {
+        var ret = self.self;
+        return addHeapObject(ret);
+    });
+    imports.wbg.__wbg_static_accessor_MODULE_39947eb3fe77895f = function() {
+        var ret = module;
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_require_c59851dfa0dc7e78 = handleError(function(arg0, arg1, arg2) {
+        var ret = getObject(arg0).require(getStringFromWasm0(arg1, arg2));
+        return addHeapObject(ret);
+    });
+    imports.wbg.__wbg_crypto_bfb05100db79193b = function(arg0) {
+        var ret = getObject(arg0).crypto;
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_msCrypto_f6dddc6ae048b7e2 = function(arg0) {
+        var ret = getObject(arg0).msCrypto;
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbindgen_is_undefined = function(arg0) {
         var ret = getObject(arg0) === undefined;
         return ret;
@@ -749,6 +775,14 @@ async function init(input) {
     imports.wbg.__wbg_set_4a5072a31008e0cb = function(arg0, arg1, arg2) {
         getObject(arg0).set(getObject(arg1), arg2 >>> 0);
     };
+    imports.wbg.__wbg_newwithlength_78dc302d31527318 = function(arg0) {
+        var ret = new Uint8Array(arg0 >>> 0);
+        return addHeapObject(ret);
+    };
+    imports.wbg.__wbg_subarray_34c228a45c72d146 = function(arg0, arg1, arg2) {
+        var ret = getObject(arg0).subarray(arg1 >>> 0, arg2 >>> 0);
+        return addHeapObject(ret);
+    };
     imports.wbg.__wbindgen_number_get = function(arg0, arg1) {
         const obj = getObject(arg1);
         var ret = typeof(obj) === 'number' ? obj : undefined;
@@ -782,27 +816,27 @@ async function init(input) {
         var ret = wasm.memory;
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper226 = function(arg0, arg1, arg2) {
-        var ret = makeMutClosure(arg0, arg1, 69, __wbg_adapter_26);
+    imports.wbg.__wbindgen_closure_wrapper251 = function(arg0, arg1, arg2) {
+        var ret = makeMutClosure(arg0, arg1, 63, __wbg_adapter_26);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper386 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper401 = function(arg0, arg1, arg2) {
         var ret = makeClosure(arg0, arg1, 161, __wbg_adapter_29);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper388 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper403 = function(arg0, arg1, arg2) {
         var ret = makeClosure(arg0, arg1, 161, __wbg_adapter_32);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper390 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper405 = function(arg0, arg1, arg2) {
         var ret = makeMutClosure(arg0, arg1, 161, __wbg_adapter_35);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper392 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper407 = function(arg0, arg1, arg2) {
         var ret = makeClosure(arg0, arg1, 161, __wbg_adapter_38);
         return addHeapObject(ret);
     };
-    imports.wbg.__wbindgen_closure_wrapper394 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper409 = function(arg0, arg1, arg2) {
         var ret = makeClosure(arg0, arg1, 161, __wbg_adapter_41);
         return addHeapObject(ret);
     };
