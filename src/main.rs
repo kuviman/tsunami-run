@@ -34,6 +34,7 @@ impl geng::LoadAsset for Animation {
 struct Assets {
     character: Animation,
     house: Rc<ugli::Texture>,
+    car: Rc<ugli::Texture>,
     tsunami: ugli::Texture,
     background: ugli::Texture,
 }
@@ -49,7 +50,9 @@ struct GameState {
     tsunami_position: f32,
     character_animation: f32,
     next_house: f32,
+    next_obstacle: f32,
     houses: Vec<(Vec2<f32>, Rc<ugli::Texture>)>,
+    obstacles: Vec<(Vec2<f32>, Rc<ugli::Texture>)>,
 }
 
 impl GameState {
@@ -58,6 +61,7 @@ impl GameState {
             geng: geng.clone(),
             assets,
             houses: Vec::new(),
+            obstacles: Vec::new(),
             far_distance: 0.0,
             near_distance: 10.0,
             camera_near: 1.0,
@@ -66,6 +70,7 @@ impl GameState {
             tsunami_position: 0.0,
             character_animation: 0.0,
             next_house: 0.0,
+            next_obstacle: 10.0,
         }
     }
     fn to_screen(&self, framebuffer: &ugli::Framebuffer, position: Vec3<f32>) -> (Vec2<f32>, f32) {
@@ -134,13 +139,16 @@ impl geng::State for GameState {
         for (position, texture) in &self.houses {
             sprites.push((texture, position.extend(0.0), vec2(0.5, 0.0), 1.5));
         }
+        for (position, texture) in &self.obstacles {
+            sprites.push((texture, position.extend(0.0), vec2(0.5, 0.0), 0.2));
+        }
         let character_texture = &self.assets.character
             [(self.character_animation * self.assets.character.len() as f32) as usize];
         sprites.push((
             character_texture,
             self.position.extend(0.0),
             vec2(0.5, 0.0),
-            0.5,
+            0.3,
         ));
         sprites.push((
             &self.assets.tsunami,
@@ -189,10 +197,30 @@ impl geng::State for GameState {
                 .push((vec2(-1.5, self.next_house), self.assets.house.clone()));
             self.next_house += 1.5;
         }
+        while self.near_distance > self.next_obstacle {
+            self.obstacles.push((
+                vec2(
+                    if rand::thread_rng().gen_bool(0.5) {
+                        1.0
+                    } else {
+                        -1.0
+                    } * 0.25,
+                    self.next_obstacle,
+                ),
+                self.assets.car.clone(),
+            ));
+            self.next_obstacle += 2.0;
+        }
         self.character_animation += 3.0 * delta_time;
         while self.character_animation >= 1.0 {
             self.character_animation -= 1.0;
         }
+        let near_distance = self.near_distance;
+        let far_distance = self.far_distance;
+        self.houses
+            .retain(|&(position, _)| far_distance <= position.y && position.y <= near_distance);
+        self.obstacles
+            .retain(|&(position, _)| far_distance <= position.y && position.y <= near_distance);
     }
 }
 
