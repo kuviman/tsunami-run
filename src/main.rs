@@ -2,6 +2,8 @@ use geng::prelude::*;
 
 #[derive(geng::Assets)]
 struct Assets {
+    #[asset(path = "character/*.png", range = "1..=4")]
+    character: Vec<ugli::Texture>,
     house: ugli::Texture,
 }
 
@@ -13,6 +15,7 @@ struct GameState {
     camera_near: f32,
     road_ratio: f32,
     position: Vec2<f32>,
+    character_animation: f32,
 }
 
 impl GameState {
@@ -25,6 +28,7 @@ impl GameState {
             camera_near: 1.0,
             road_ratio: 0.5,
             position: vec2(0.0, 5.0),
+            character_animation: 0.0,
         }
     }
     fn to_screen(&self, framebuffer: &ugli::Framebuffer, position: Vec3<f32>) -> (Vec2<f32>, f32) {
@@ -89,7 +93,15 @@ impl geng::State for GameState {
                 1.5,
             );
         }
-        self.draw_circle(framebuffer, self.position.extend(0.0));
+        let character_texture = &self.assets.character
+            [(self.character_animation * self.assets.character.len() as f32) as usize];
+        self.draw_texture(
+            framebuffer,
+            character_texture,
+            self.position.extend(0.0),
+            vec2(0.5, 0.0),
+            0.5,
+        );
     }
     fn update(&mut self, delta_time: f64) {
         let delta_time = delta_time as f32;
@@ -116,6 +128,10 @@ impl geng::State for GameState {
         }
         self.near_distance += camera_speed * delta_time;
         self.far_distance += camera_speed * delta_time;
+        self.character_animation += 3.0 * delta_time;
+        while self.character_animation >= 1.0 {
+            self.character_animation -= 1.0;
+        }
     }
 }
 
