@@ -1,9 +1,38 @@
 use geng::prelude::*;
 
+#[derive(derive_more::Deref)]
+struct Animation {
+    #[deref]
+    frames: Vec<ugli::Texture>,
+}
+
+impl geng::LoadAsset for Animation {
+    fn load(geng: &Rc<Geng>, path: &str) -> geng::AssetFuture<Self> {
+        let data = <Vec<u8> as geng::LoadAsset>::load(geng, path);
+        let geng = geng.clone();
+        async move {
+            let data = data.await?;
+            use image::AnimationDecoder;
+            Ok(Self {
+                frames: image::codecs::png::PngDecoder::new(data.as_slice())
+                    .unwrap()
+                    .apng()
+                    .into_frames()
+                    .map(|frame| {
+                        let frame = frame.unwrap();
+                        ugli::Texture::from_image_image(geng.ugli(), frame.into_buffer())
+                    })
+                    .collect(),
+            })
+        }
+        .boxed_local()
+    }
+    const DEFAULT_EXT: Option<&'static str> = Some("png");
+}
+
 #[derive(geng::Assets)]
 struct Assets {
-    #[asset(path = "character/*.png", range = "1..=4")]
-    character: Vec<ugli::Texture>,
+    character: Animation,
     house: Rc<ugli::Texture>,
     tsunami: ugli::Texture,
 }
