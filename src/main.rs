@@ -4,6 +4,8 @@ mod character;
 
 use character::*;
 
+const PLAYER_SIZE: f32 = 0.1;
+
 #[derive(derive_more::Deref)]
 pub struct Animation {
     #[deref]
@@ -56,6 +58,7 @@ struct GameState {
     next_obstacle: f32,
     houses: Vec<(Vec2<f32>, Rc<ugli::Texture>)>,
     obstacles: Vec<(Vec2<f32>, Rc<ugli::Texture>)>,
+    characters: Vec<Character>,
     game_speed: f32,
 }
 
@@ -72,6 +75,7 @@ impl GameState {
             camera_near: 1.0,
             road_ratio: 0.5,
             player,
+            characters: Vec::new(),
             tsunami_position: 0.0,
             next_house: 0.0,
             next_obstacle: 10.0,
@@ -165,6 +169,9 @@ impl geng::State for GameState {
             sprites.push((texture, position.extend(0.0), vec2(0.5, 0.0), 0.2));
         }
         sprites.push(self.player.draw());
+        for character in &self.characters {
+            sprites.push(character.draw());
+        }
         sprites.push((
             &self.assets.tsunami,
             vec3(0.0, self.tsunami_position, 0.0),
@@ -192,22 +199,21 @@ impl geng::State for GameState {
         }
         self.player.velocity = velocity;
         self.player.update(delta_time);
-        const PLAYER_SIZE: f32 = 0.1;
         self.player.position.x = clamp(
             self.player.position.x,
             -self.road_ratio + PLAYER_SIZE..=self.road_ratio - PLAYER_SIZE,
         );
         for &(position, _) in &self.obstacles {
-            let dp = self.player.position - position;
-            const SIZE_X: f32 = 0.23 + PLAYER_SIZE;
-            const SIZE_Y: f32 = 0.23 + PLAYER_SIZE;
-            if dp.x.abs() < SIZE_X && dp.y.abs() < SIZE_Y {
-                if dp.x.abs() > dp.y.abs() {
-                    self.player.position.x = position.x + dp.x.signum() * SIZE_X;
-                } else {
-                    self.player.position.y = position.y + dp.y.signum() * SIZE_Y;
-                }
+            for character in self
+                .characters
+                .iter_mut()
+                .chain(std::iter::once(&mut self.player))
+            {
+                character.check_hit(position, 0.23);
             }
+        }
+        for character in &self.characters {
+            self.player.check_hit(character.position, PLAYER_SIZE);
         }
         self.tsunami_position += delta_time;
         self.look_at(self.player.position.y);
@@ -219,17 +225,29 @@ impl geng::State for GameState {
             self.next_house += 1.0;
         }
         while self.near_distance + self.camera_near > self.next_obstacle {
-            self.obstacles.push((
-                vec2(
-                    if rand::thread_rng().gen_bool(0.5) {
-                        1.0
-                    } else {
-                        -1.0
-                    } * 0.25,
-                    self.next_obstacle,
-                ),
-                self.assets.car.clone(),
-            ));
+            if rand::thread_rng().gen_bool(0.7) {
+                let mut character = Character::new(
+                    self.assets.character.clone(),
+                    vec2(
+                        rand::thread_rng().gen_range(-self.road_ratio..=self.road_ratio),
+                        self.next_obstacle,
+                    ),
+                );
+                character.velocity = vec2(0.0, 0.5);
+                self.characters.push(character);
+            } else {
+                self.obstacles.push((
+                    vec2(
+                        if rand::thread_rng().gen_bool(0.5) {
+                            1.0
+                        } else {
+                            -1.0
+                        } * 0.25,
+                        self.next_obstacle,
+                    ),
+                    self.assets.car.clone(),
+                ));
+            }
             self.next_obstacle += 2.0;
         }
         let near_distance = self.near_distance;
@@ -241,6 +259,9 @@ impl geng::State for GameState {
         self.obstacles.retain(|&(position, _)| {
             far_distance <= position.y && position.y <= near_distance + camera_near
         });
+        for character in &mut self.characters {
+            character.update(delta_time);
+        }
     }
 }
 
