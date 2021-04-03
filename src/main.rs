@@ -233,7 +233,7 @@ impl geng::State for GameState {
                         self.next_obstacle,
                     ),
                 );
-                character.velocity = vec2(0.0, 0.5);
+                character.velocity = vec2(0.0, rand::thread_rng().gen_range(0.3..0.7));
                 self.characters.push(character);
             } else {
                 self.obstacles.push((
