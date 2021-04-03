@@ -53,6 +53,7 @@ struct GameState {
     next_obstacle: f32,
     houses: Vec<(Vec2<f32>, Rc<ugli::Texture>)>,
     obstacles: Vec<(Vec2<f32>, Rc<ugli::Texture>)>,
+    game_speed: f32,
 }
 
 impl GameState {
@@ -71,6 +72,7 @@ impl GameState {
             character_animation: 0.0,
             next_house: 0.0,
             next_obstacle: 10.0,
+            game_speed: 1.0,
         }
     }
     fn to_screen(&self, framebuffer: &ugli::Framebuffer, position: Vec3<f32>) -> (Vec2<f32>, f32) {
@@ -180,6 +182,8 @@ impl geng::State for GameState {
     }
     fn update(&mut self, delta_time: f64) {
         let delta_time = delta_time as f32;
+        self.game_speed += 0.05 * delta_time;
+        let delta_time = delta_time * self.game_speed;
         let mut velocity = vec2(0.0, 1.0);
         if self.geng.window().is_key_pressed(geng::Key::Left) {
             velocity.x -= 1.0;
