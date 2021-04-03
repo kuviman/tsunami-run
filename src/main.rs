@@ -1,7 +1,11 @@
 use geng::prelude::*;
 
+mod character;
+
+use character::*;
+
 #[derive(derive_more::Deref)]
-struct Animation {
+pub struct Animation {
     #[deref]
     frames: Vec<ugli::Texture>,
 }
@@ -32,7 +36,7 @@ impl geng::LoadAsset for Animation {
 
 #[derive(geng::Assets)]
 struct Assets {
-    character: Animation,
+    character: Rc<Animation>,
     #[asset(path = "house*.png", range = "1..=3")]
     houses: Vec<Rc<ugli::Texture>>,
     car: Rc<ugli::Texture>,
@@ -46,9 +50,8 @@ struct GameState {
     near_distance: f32,
     camera_near: f32,
     road_ratio: f32,
-    position: Vec2<f32>,
+    player: Character,
     tsunami_position: f32,
-    character_animation: f32,
     next_house: f32,
     next_obstacle: f32,
     houses: Vec<(Vec2<f32>, Rc<ugli::Texture>)>,
@@ -58,6 +61,7 @@ struct GameState {
 
 impl GameState {
     pub fn new(geng: &Rc<Geng>, assets: Assets) -> Self {
+        let player = Character::new(assets.character.clone(), vec2(0.0, 5.0));
         Self {
             geng: geng.clone(),
             assets,
@@ -67,9 +71,8 @@ impl GameState {
             near_distance: 10.0,
             camera_near: 1.0,
             road_ratio: 0.5,
-            position: vec2(0.0, 5.0),
+            player,
             tsunami_position: 0.0,
-            character_animation: 0.0,
             next_house: 0.0,
             next_obstacle: 10.0,
             game_speed: 1.0,
@@ -161,14 +164,7 @@ impl geng::State for GameState {
         for (position, texture) in &self.obstacles {
             sprites.push((texture, position.extend(0.0), vec2(0.5, 0.0), 0.2));
         }
-        let character_texture = &self.assets.character
-            [(self.character_animation * self.assets.character.len() as f32) as usize];
-        sprites.push((
-            character_texture,
-            self.position.extend(0.0),
-            vec2(0.5, 0.0),
-            0.3,
-        ));
+        sprites.push(self.player.draw());
         sprites.push((
             &self.assets.tsunami,
             vec3(0.0, self.tsunami_position, 0.0),
@@ -194,26 +190,27 @@ impl geng::State for GameState {
         if self.geng.window().is_key_pressed(geng::Key::Up) {
             velocity.y = -1.0;
         }
-        self.position += velocity * delta_time;
+        self.player.velocity = velocity;
+        self.player.update(delta_time);
         const PLAYER_SIZE: f32 = 0.1;
-        self.position.x = clamp(
-            self.position.x,
+        self.player.position.x = clamp(
+            self.player.position.x,
             -self.road_ratio + PLAYER_SIZE..=self.road_ratio - PLAYER_SIZE,
         );
         for &(position, _) in &self.obstacles {
-            let dp = self.position - position;
+            let dp = self.player.position - position;
             const SIZE_X: f32 = 0.23 + PLAYER_SIZE;
             const SIZE_Y: f32 = 0.23 + PLAYER_SIZE;
             if dp.x.abs() < SIZE_X && dp.y.abs() < SIZE_Y {
                 if dp.x.abs() > dp.y.abs() {
-                    self.position.x = position.x + dp.x.signum() * SIZE_X;
+                    self.player.position.x = position.x + dp.x.signum() * SIZE_X;
                 } else {
-                    self.position.y = position.y + dp.y.signum() * SIZE_Y;
+                    self.player.position.y = position.y + dp.y.signum() * SIZE_Y;
                 }
             }
         }
         self.tsunami_position += delta_time;
-        self.look_at(self.position.y);
+        self.look_at(self.player.position.y);
         while self.near_distance + self.camera_near > self.next_house {
             self.houses
                 .push((vec2(1.3, self.next_house), self.random_house()));
@@ -234,10 +231,6 @@ impl geng::State for GameState {
                 self.assets.car.clone(),
             ));
             self.next_obstacle += 2.0;
-        }
-        self.character_animation += 3.0 * delta_time;
-        while self.character_animation >= 1.0 {
-            self.character_animation -= 1.0;
         }
         let near_distance = self.near_distance;
         let far_distance = self.far_distance;
