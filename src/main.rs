@@ -33,7 +33,8 @@ impl geng::LoadAsset for Animation {
 #[derive(geng::Assets)]
 struct Assets {
     character: Animation,
-    house: Rc<ugli::Texture>,
+    #[asset(path = "house*.png", range = "1..=3")]
+    houses: Vec<Rc<ugli::Texture>>,
     car: Rc<ugli::Texture>,
     tsunami: ugli::Texture,
 }
@@ -114,6 +115,13 @@ impl GameState {
         self.near_distance = position + 2.0;
         self.far_distance = position - 10.0;
     }
+    fn random_house(&self) -> Rc<ugli::Texture> {
+        self.assets
+            .houses
+            .choose(&mut rand::thread_rng())
+            .unwrap()
+            .clone()
+    }
 }
 
 impl geng::State for GameState {
@@ -188,9 +196,9 @@ impl geng::State for GameState {
         self.look_at(self.position.y);
         while self.near_distance + self.camera_near > self.next_house {
             self.houses
-                .push((vec2(1.5, self.next_house), self.assets.house.clone()));
+                .push((vec2(1.5, self.next_house), self.random_house()));
             self.houses
-                .push((vec2(-1.5, self.next_house), self.assets.house.clone()));
+                .push((vec2(-1.5, self.next_house), self.random_house()));
             self.next_house += 1.0;
         }
         while self.near_distance + self.camera_near > self.next_obstacle {
