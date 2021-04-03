@@ -39,7 +39,7 @@ impl geng::LoadAsset for Animation {
 #[derive(geng::Assets)]
 struct Assets {
     character: Rc<Animation>,
-    #[asset(path = "house*.png", range = "1..=3")]
+    #[asset(path = "house*.png", range = "1..=4")]
     houses: Vec<Rc<ugli::Texture>>,
     car: Rc<ugli::Texture>,
     tsunami: ugli::Texture,
