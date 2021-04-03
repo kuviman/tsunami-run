@@ -259,6 +259,9 @@ impl geng::State for GameState {
         self.obstacles.retain(|&(position, _)| {
             far_distance <= position.y && position.y <= near_distance + camera_near
         });
+        self.characters.retain(|&Character { position, .. }| {
+            far_distance <= position.y && position.y <= near_distance + camera_near
+        });
         for character in &mut self.characters {
             character.update(delta_time);
         }
