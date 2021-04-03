@@ -216,9 +216,9 @@ impl geng::State for GameState {
         self.look_at(self.position.y);
         while self.near_distance + self.camera_near > self.next_house {
             self.houses
-                .push((vec2(1.5, self.next_house), self.random_house()));
+                .push((vec2(1.3, self.next_house), self.random_house()));
             self.houses
-                .push((vec2(-1.5, self.next_house), self.random_house()));
+                .push((vec2(-1.3, self.next_house), self.random_house()));
             self.next_house += 1.0;
         }
         while self.near_distance + self.camera_near > self.next_obstacle {
