@@ -13,7 +13,7 @@ pub struct Animation {
     frames: Vec<ugli::Texture>,
 }
 
-enum Size {
+pub enum Size {
     FixedWidth(f32),
     FixedHeight(f32),
 }
@@ -44,7 +44,7 @@ impl geng::LoadAsset for Animation {
 
 #[derive(geng::Assets)]
 struct Assets {
-    character: Rc<Animation>,
+    character: Rc<character::Assets>,
     #[asset(path = "house*.png", range = "1..=4")]
     houses: Vec<Rc<ugli::Texture>>,
     #[asset(path = "car*.png", range = "1..=2")]
@@ -54,7 +54,7 @@ struct Assets {
 
 struct GameState {
     geng: Rc<Geng>,
-    assets: Assets,
+    assets: Rc<Assets>,
     far_distance: f32,
     near_distance: f32,
     camera_near: f32,
@@ -67,11 +67,13 @@ struct GameState {
     obstacles: Vec<(Vec2<f32>, Rc<ugli::Texture>)>,
     characters: Vec<Character>,
     game_speed: f32,
+    transition: Option<geng::Transition>,
 }
 
 impl GameState {
-    pub fn new(geng: &Rc<Geng>, assets: Assets) -> Self {
-        let player = Character::new(assets.character.clone(), vec2(0.0, 5.0));
+    pub fn new(geng: &Rc<Geng>, assets: Rc<Assets>) -> Self {
+        let mut player = Character::new(assets.character.clone(), vec2(0.0, 5.0));
+        player.velocity.y = 1.0;
         Self {
             geng: geng.clone(),
             assets,
@@ -87,6 +89,7 @@ impl GameState {
             next_house: 0.0,
             next_obstacle: 10.0,
             game_speed: 1.0,
+            transition: None,
         }
     }
     fn to_screen(&self, framebuffer: &ugli::Framebuffer, position: Vec3<f32>) -> (Vec2<f32>, f32) {
@@ -210,17 +213,19 @@ impl geng::State for GameState {
         let delta_time = delta_time as f32;
         self.game_speed += 0.05 * delta_time;
         let delta_time = delta_time * self.game_speed;
-        let mut velocity = vec2(0.0, 1.0);
-        if self.geng.window().is_key_pressed(geng::Key::Left) {
-            velocity.x -= 1.0;
+        if self.player.velocity.y != 0.0 {
+            let mut velocity = vec2(0.0, 1.0);
+            if self.geng.window().is_key_pressed(geng::Key::Left) {
+                velocity.x -= 1.0;
+            }
+            if self.geng.window().is_key_pressed(geng::Key::Right) {
+                velocity.x += 1.0;
+            }
+            if self.geng.window().is_key_pressed(geng::Key::Up) {
+                velocity.y = -1.0;
+            }
+            self.player.velocity = velocity;
         }
-        if self.geng.window().is_key_pressed(geng::Key::Right) {
-            velocity.x += 1.0;
-        }
-        if self.geng.window().is_key_pressed(geng::Key::Up) {
-            velocity.y = -1.0;
-        }
-        self.player.velocity = velocity;
         self.player.update(delta_time);
         self.player.position.x = clamp(
             self.player.position.x,
@@ -232,11 +237,16 @@ impl geng::State for GameState {
                 .iter_mut()
                 .chain(std::iter::once(&mut self.player))
             {
-                character.check_hit(position, OBSTACLE_SIZE);
+                if character.check_hit(position, OBSTACLE_SIZE) {
+                    character.fall();
+                }
             }
         }
-        for character in &self.characters {
-            self.player.check_hit(character.position, PLAYER_SIZE);
+        for character in &mut self.characters {
+            if self.player.check_hit(character.position, PLAYER_SIZE) {
+                self.player.fall();
+                character.fall();
+            }
         }
         self.tsunami_position += delta_time;
         self.look_at(self.player.position.y);
@@ -293,6 +303,17 @@ impl geng::State for GameState {
             character.update(delta_time);
         }
     }
+    fn handle_event(&mut self, event: geng::Event) {
+        if let geng::Event::KeyDown { key: geng::Key::R } = event {
+            self.transition = Some(geng::Transition::Switch(Box::new(GameState::new(
+                &self.geng,
+                self.assets.clone(),
+            ))));
+        }
+    }
+    fn transition(&mut self) -> Option<geng::Transition> {
+        self.transition.take()
+    }
 }
 
 fn main() {
@@ -306,7 +327,7 @@ fn main() {
         geng.clone(),
         geng::LoadingScreen::new(&geng, geng::EmptyLoadingScreen, assets, {
             let geng = geng.clone();
-            move |assets| GameState::new(&geng, assets.unwrap())
+            move |assets| GameState::new(&geng, Rc::new(assets.unwrap()))
         }),
     )
 }
