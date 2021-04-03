@@ -23,10 +23,15 @@ impl Character {
             self.animation_position -= 1.0;
         }
     }
-    pub fn draw(&self) -> (&ugli::Texture, Vec3<f32>, Vec2<f32>, f32) {
+    pub fn draw(&self) -> (&ugli::Texture, Vec3<f32>, Vec2<f32>, Size) {
         let texture =
             &self.animation[(self.animation_position * self.animation.len() as f32) as usize];
-        (texture, self.position.extend(0.0), vec2(0.5, 0.0), 0.3)
+        (
+            texture,
+            self.position.extend(0.0),
+            vec2(0.5, 0.0),
+            Size::FixedWidth(PLAYER_SIZE * 2.0),
+        )
     }
     pub fn check_hit(&mut self, obstacle_position: Vec2<f32>, obstacle_size: f32) {
         let dp = self.position - obstacle_position;

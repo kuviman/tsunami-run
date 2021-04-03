@@ -5,11 +5,17 @@ mod character;
 use character::*;
 
 const PLAYER_SIZE: f32 = 0.1;
+const OBSTACLE_SIZE: f32 = 0.23;
 
 #[derive(derive_more::Deref)]
 pub struct Animation {
     #[deref]
     frames: Vec<ugli::Texture>,
+}
+
+enum Size {
+    FixedWidth(f32),
+    FixedHeight(f32),
 }
 
 impl geng::LoadAsset for Animation {
@@ -103,13 +109,19 @@ impl GameState {
         texture: &ugli::Texture,
         position: Vec3<f32>,
         origin: Vec2<f32>,
-        height: f32,
+        size: Size,
     ) {
         if position.y > self.near_distance + self.camera_near {
             return;
         }
         let (screen_position, scale) = self.to_screen(framebuffer, position);
-        let height = framebuffer.size().y as f32 * 0.8 * height * scale;
+        let height = match size {
+            Size::FixedHeight(height) => framebuffer.size().y as f32 * 0.8 * height * scale,
+            Size::FixedWidth(width) => {
+                let height = width * texture.size().y as f32 / texture.size().x as f32;
+                framebuffer.size().y as f32 * 0.8 * height * scale
+            }
+        };
         let size = texture.size().map(|x| x as f32);
         let size = vec2(height * size.x / size.y, height);
         let aabb = AABB::pos_size(
@@ -161,12 +173,22 @@ impl geng::State for GameState {
             Color::rgb(0.7, 0.7, 0.7),
             ugli::DrawMode::TriangleFan,
         );
-        let mut sprites: Vec<(&ugli::Texture, Vec3<f32>, Vec2<f32>, f32)> = Vec::new();
+        let mut sprites: Vec<(&ugli::Texture, Vec3<f32>, Vec2<f32>, Size)> = Vec::new();
         for (position, texture) in &self.houses {
-            sprites.push((texture, position.extend(0.0), vec2(0.5, 0.0), 1.5));
+            sprites.push((
+                texture,
+                position.extend(0.0),
+                vec2(0.5, 0.0),
+                Size::FixedWidth(1.0),
+            ));
         }
         for (position, texture) in &self.obstacles {
-            sprites.push((texture, position.extend(0.0), vec2(0.5, 0.0), 0.2));
+            sprites.push((
+                texture,
+                position.extend(0.0),
+                vec2(0.5, 0.0),
+                Size::FixedWidth(0.23),
+            ));
         }
         sprites.push(self.player.draw());
         for character in &self.characters {
@@ -176,11 +198,11 @@ impl geng::State for GameState {
             &self.assets.tsunami,
             vec3(0.0, self.tsunami_position, 0.0),
             vec2(0.5, 0.2),
-            2.0,
+            Size::FixedHeight(2.0),
         ));
         sprites.sort_by_key(|&(_, pos, _, _)| r32(pos.y));
-        for (texture, position, origin, height) in sprites {
-            self.draw_texture(framebuffer, texture, position, origin, height);
+        for (texture, position, origin, size) in sprites {
+            self.draw_texture(framebuffer, texture, position, origin, size);
         }
     }
     fn update(&mut self, delta_time: f64) {
@@ -209,7 +231,7 @@ impl geng::State for GameState {
                 .iter_mut()
                 .chain(std::iter::once(&mut self.player))
             {
-                character.check_hit(position, 0.23);
+                character.check_hit(position, OBSTACLE_SIZE);
             }
         }
         for character in &self.characters {
