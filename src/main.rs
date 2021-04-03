@@ -191,7 +191,23 @@ impl geng::State for GameState {
             velocity.y = -1.0;
         }
         self.position += velocity * delta_time;
-        self.position.x = clamp(self.position.x, -self.road_ratio..=self.road_ratio);
+        const PLAYER_SIZE: f32 = 0.1;
+        self.position.x = clamp(
+            self.position.x,
+            -self.road_ratio + PLAYER_SIZE..=self.road_ratio - PLAYER_SIZE,
+        );
+        for &(position, _) in &self.obstacles {
+            let dp = self.position - position;
+            const SIZE_X: f32 = 0.23 + PLAYER_SIZE;
+            const SIZE_Y: f32 = 0.23 + PLAYER_SIZE;
+            if dp.x.abs() < SIZE_X && dp.y.abs() < SIZE_Y {
+                if dp.x.abs() > dp.y.abs() {
+                    self.position.x = position.x + dp.x.signum() * SIZE_X;
+                } else {
+                    self.position.y = position.y + dp.y.signum() * SIZE_Y;
+                }
+            }
+        }
         self.tsunami_position += delta_time;
         self.look_at(self.position.y);
         while self.near_distance + self.camera_near > self.next_house {
