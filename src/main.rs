@@ -47,7 +47,8 @@ struct Assets {
     character: Rc<Animation>,
     #[asset(path = "house*.png", range = "1..=4")]
     houses: Vec<Rc<ugli::Texture>>,
-    car: Rc<ugli::Texture>,
+    #[asset(path = "car*.png", range = "1..=2")]
+    cars: Vec<Rc<ugli::Texture>>,
     tsunami: ugli::Texture,
 }
 
@@ -267,7 +268,11 @@ impl geng::State for GameState {
                         } * 0.25,
                         self.next_obstacle,
                     ),
-                    self.assets.car.clone(),
+                    self.assets
+                        .cars
+                        .choose(&mut rand::thread_rng())
+                        .unwrap()
+                        .clone(),
                 ));
             }
             self.next_obstacle += 2.0;
