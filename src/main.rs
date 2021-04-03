@@ -2,7 +2,7 @@ use geng::prelude::*;
 
 mod character;
 
-use character::*;
+use character::Character;
 
 const PLAYER_SIZE: f32 = 0.1;
 const OBSTACLE_SIZE: f32 = 0.23;
@@ -213,7 +213,7 @@ impl geng::State for GameState {
         let delta_time = delta_time as f32;
         self.game_speed += 0.05 * delta_time;
         let delta_time = delta_time * self.game_speed;
-        if self.player.velocity.y != 0.0 {
+        if self.player.state == character::State::Run {
             let mut velocity = vec2(0.0, 1.0);
             if self.geng.window().is_key_pressed(geng::Key::Left) {
                 velocity.x -= 1.0;
@@ -238,14 +238,14 @@ impl geng::State for GameState {
                 .chain(std::iter::once(&mut self.player))
             {
                 if character.check_hit(position, OBSTACLE_SIZE) {
-                    character.fall();
+                    character.fall_side();
                 }
             }
         }
         for character in &mut self.characters {
             if self.player.check_hit(character.position, PLAYER_SIZE) {
                 self.player.fall();
-                character.fall();
+                character.fall_side();
             }
         }
         self.tsunami_position += delta_time;
