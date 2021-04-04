@@ -50,6 +50,7 @@ struct Assets {
     #[asset(path = "car*.png", range = "1..=2")]
     cars: Vec<Rc<ugli::Texture>>,
     tsunami: ugli::Texture,
+    road: ugli::Texture,
 }
 
 struct GameState {
@@ -156,16 +157,6 @@ impl geng::State for GameState {
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
         let framebuffer_size = framebuffer.size();
         ugli::clear(framebuffer, Some(Color::rgb(0.0, 1.0, 0.0)), None);
-        let road = [
-            self.to_screen(framebuffer, vec3(-self.road_ratio, self.far_distance, 0.0))
-                .0,
-            self.to_screen(framebuffer, vec3(self.road_ratio, self.far_distance, 0.0))
-                .0,
-            self.to_screen(framebuffer, vec3(self.road_ratio, self.near_distance, 0.0))
-                .0,
-            self.to_screen(framebuffer, vec3(-self.road_ratio, self.near_distance, 0.0))
-                .0,
-        ];
         self.geng.draw_2d().quad(
             framebuffer,
             AABB::pos_size(
@@ -174,11 +165,65 @@ impl geng::State for GameState {
             ),
             Color::rgb(0.8, 0.8, 1.0),
         );
-        self.geng.draw_2d().draw(
+        let mut road = Vec::new();
+        const N: usize = 1000; // DIRTY HACK KEK
+        for i in 0..N {
+            let near =
+                self.near_distance + (self.far_distance - self.near_distance) * i as f32 / N as f32;
+            let far = self.near_distance
+                + (self.far_distance - self.near_distance) * (i + 1) as f32 / N as f32;
+            road.push(geng::draw_2d::TexturedVertex {
+                a_pos: self
+                    .to_screen(framebuffer, vec3(-self.road_ratio, far, 0.0))
+                    .0,
+                a_color: Color::WHITE,
+                a_vt: vec2(0.0, far),
+            });
+            road.push(geng::draw_2d::TexturedVertex {
+                a_pos: self
+                    .to_screen(framebuffer, vec3(self.road_ratio, far, 0.0))
+                    .0,
+                a_color: Color::WHITE,
+                a_vt: vec2(1.0, far),
+            });
+            road.push(geng::draw_2d::TexturedVertex {
+                a_pos: self
+                    .to_screen(framebuffer, vec3(self.road_ratio, near, 0.0))
+                    .0,
+                a_color: Color::WHITE,
+                a_vt: vec2(1.0, near),
+            });
+            road.push(geng::draw_2d::TexturedVertex {
+                a_pos: self
+                    .to_screen(framebuffer, vec3(-self.road_ratio, far, 0.0))
+                    .0,
+                a_color: Color::WHITE,
+                a_vt: vec2(0.0, far),
+            });
+            road.push(geng::draw_2d::TexturedVertex {
+                a_pos: self
+                    .to_screen(framebuffer, vec3(self.road_ratio, near, 0.0))
+                    .0,
+                a_color: Color::WHITE,
+                a_vt: vec2(1.0, near),
+            });
+            road.push(geng::draw_2d::TexturedVertex {
+                a_pos: self
+                    .to_screen(framebuffer, vec3(-self.road_ratio, near, 0.0))
+                    .0,
+                a_color: Color::WHITE,
+                a_vt: vec2(0.0, near),
+            });
+        }
+        for v in &mut road {
+            v.a_vt.y *= 0.1;
+        }
+        self.geng.draw_2d().draw_textured(
             framebuffer,
             &road,
-            Color::rgb(0.7, 0.7, 0.7),
-            ugli::DrawMode::TriangleFan,
+            &self.assets.road,
+            Color::WHITE,
+            ugli::DrawMode::Triangles,
         );
         let mut sprites: Vec<(&ugli::Texture, Vec3<f32>, Vec2<f32>, Size)> = Vec::new();
         for (position, texture) in &self.houses {
@@ -342,7 +387,11 @@ fn main() {
         geng.clone(),
         geng::LoadingScreen::new(&geng, geng::EmptyLoadingScreen, assets, {
             let geng = geng.clone();
-            move |assets| GameState::new(&geng, Rc::new(assets.unwrap()))
+            move |assets| {
+                let mut assets = assets.unwrap();
+                assets.road.set_wrap_mode(ugli::WrapMode::Repeat);
+                GameState::new(&geng, Rc::new(assets))
+            }
         }),
     )
 }
