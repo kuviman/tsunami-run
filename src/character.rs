@@ -78,11 +78,17 @@ impl Character {
         false
     }
     pub fn fall(&mut self) {
+        if self.state != State::Run {
+            return;
+        }
         self.velocity = vec2(0.0, 0.0);
         self.animation_position = 0.0;
         self.state = State::Fall;
     }
     pub fn fall_side(&mut self) {
+        if self.state != State::Run {
+            return;
+        }
         self.velocity = vec2(0.0, 0.0);
         self.animation_position = 0.0;
         self.state = State::FallSide;

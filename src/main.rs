@@ -45,8 +45,10 @@ impl geng::LoadAsset for Animation {
 #[derive(geng::Assets)]
 struct Assets {
     character: Rc<character::Assets>,
-    #[asset(path = "house*.png", range = "1..=4")]
+    #[asset(path = "house*.png", range = "1..=5")]
     houses: Vec<Rc<ugli::Texture>>,
+    #[asset(path = "beach_house*.png", range = "1..=2")]
+    beach_houses: Vec<Rc<ugli::Texture>>,
     #[asset(path = "car*.png", range = "1..=2")]
     cars: Vec<Rc<ugli::Texture>>,
     tsunami: ugli::Texture,
@@ -142,28 +144,63 @@ impl GameState {
         self.far_distance = position - 10.0;
     }
     fn random_house(&self) -> Rc<ugli::Texture> {
-        self.assets
-            .houses
-            .choose(&mut rand::thread_rng())
-            .unwrap()
-            .clone()
+        if self.next_house > BEACH_END {
+            self.assets
+                .houses
+                .choose(&mut rand::thread_rng())
+                .unwrap()
+                .clone()
+        } else {
+            self.assets
+                .beach_houses
+                .choose(&mut rand::thread_rng())
+                .unwrap()
+                .clone()
+        }
     }
     fn game_finished(&self) -> bool {
         self.tsunami_position > self.near_distance + self.camera_near
     }
 }
 
+const BEACH_START: f32 = 1.0;
+const BEACH_END: f32 = 20.0;
+
 impl geng::State for GameState {
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
         let framebuffer_size = framebuffer.size();
-        ugli::clear(framebuffer, Some(Color::rgb(0.0, 1.0, 0.0)), None);
+        ugli::clear(framebuffer, Some(Color::rgb(0.8, 0.8, 1.0)), None);
+        let beach_start = self.to_screen(framebuffer, vec3(0.0, 0.0, 0.0)).0.y;
+        let beach_end = self
+            .to_screen(
+                &framebuffer,
+                vec3(0.0, BEACH_END.min(self.near_distance), 0.0),
+            )
+            .0
+            .y;
         self.geng.draw_2d().quad(
             framebuffer,
             AABB::pos_size(
-                vec2(0.0, framebuffer_size.y as f32 * 0.8),
-                framebuffer_size.map(|x| x as f32),
+                vec2(0.0, beach_start),
+                vec2(
+                    framebuffer_size.x as f32,
+                    framebuffer_size.y as f32 * 0.8 - beach_start,
+                ),
             ),
-            Color::rgb(0.8, 0.8, 1.0),
+            Color::rgb(0.0, 0.0, 1.0),
+        );
+        self.geng.draw_2d().quad(
+            framebuffer,
+            AABB::pos_size(
+                vec2(0.0, beach_start),
+                vec2(framebuffer_size.x as f32, beach_end - beach_start),
+            ),
+            Color::rgb(1.0, 1.0, 0.0),
+        );
+        self.geng.draw_2d().quad(
+            framebuffer,
+            AABB::pos_size(vec2(0.0, 0.0), vec2(framebuffer_size.x as f32, beach_end)),
+            Color::rgb(0.0, 0.7, 0.0),
         );
         let mut road = Vec::new();
         const N: usize = 1000; // DIRTY HACK KEK
@@ -311,10 +348,20 @@ impl geng::State for GameState {
         self.tsunami_position += delta_time;
         self.look_at(self.player.position.y);
         while self.near_distance + self.camera_near > self.next_house {
-            self.houses
-                .push((vec2(1.3, self.next_house), self.random_house()));
-            self.houses
-                .push((vec2(-1.3, self.next_house), self.random_house()));
+            if self.next_house > BEACH_END {
+                self.houses
+                    .push((vec2(1.3, self.next_house), self.random_house()));
+                self.houses
+                    .push((vec2(-1.3, self.next_house), self.random_house()));
+            } else {
+                if rand::thread_rng().gen_bool(0.5) {
+                    self.houses
+                        .push((vec2(1.3, self.next_house), self.random_house()));
+                } else {
+                    self.houses
+                        .push((vec2(-1.3, self.next_house), self.random_house()));
+                }
+            }
             self.next_house += 1.0;
         }
         while self.near_distance + self.camera_near > self.next_obstacle {
