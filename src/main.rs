@@ -147,6 +147,9 @@ impl GameState {
             .unwrap()
             .clone()
     }
+    fn game_finished(&self) -> bool {
+        self.tsunami_position > self.near_distance + self.camera_near
+    }
 }
 
 impl geng::State for GameState {
@@ -186,27 +189,39 @@ impl geng::State for GameState {
                 Size::FixedWidth(1.0),
             ));
         }
-        for (position, texture) in &self.obstacles {
+        if !self.game_finished() {
+            for (position, texture) in &self.obstacles {
+                sprites.push((
+                    texture,
+                    position.extend(0.0),
+                    vec2(0.5, 0.0),
+                    Size::FixedWidth(0.23),
+                ));
+            }
+            sprites.push(self.player.draw());
+            for character in &self.characters {
+                sprites.push(character.draw());
+            }
             sprites.push((
-                texture,
-                position.extend(0.0),
-                vec2(0.5, 0.0),
-                Size::FixedWidth(0.23),
+                &self.assets.tsunami,
+                vec3(0.0, self.tsunami_position, 0.0),
+                vec2(0.5, 0.2),
+                Size::FixedHeight(2.0),
             ));
         }
-        sprites.push(self.player.draw());
-        for character in &self.characters {
-            sprites.push(character.draw());
-        }
-        sprites.push((
-            &self.assets.tsunami,
-            vec3(0.0, self.tsunami_position, 0.0),
-            vec2(0.5, 0.2),
-            Size::FixedHeight(2.0),
-        ));
         sprites.sort_by_key(|&(_, pos, _, _)| r32(pos.y));
         for (texture, position, origin, size) in sprites {
             self.draw_texture(framebuffer, texture, position, origin, size);
+        }
+        if self.game_finished() {
+            self.geng.draw_2d().quad(
+                framebuffer,
+                AABB::pos_size(
+                    vec2(0.0, 0.0),
+                    vec2(framebuffer_size.x as f32, framebuffer_size.y as f32 * 0.8),
+                ),
+                Color::rgba(0.0, 0.5, 1.0, 0.5),
+            );
         }
     }
     fn update(&mut self, delta_time: f64) {
