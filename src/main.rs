@@ -52,7 +52,7 @@ struct Assets {
     beach_houses: Vec<Rc<ugli::Texture>>,
     #[asset(path = "car*.png", range = "1..=2")]
     cars: Vec<Rc<ugli::Texture>>,
-    tsunami: ugli::Texture,
+    tsunami: Animation,
     road: ugli::Texture,
     sand_road: ugli::Texture,
     pierce: ugli::Texture,
@@ -77,6 +77,7 @@ struct GameState {
     font: geng::Font,
     time: Option<f32>,
     pressed_location: Option<f32>,
+    tsunami_animation: f32,
 }
 
 impl GameState {
@@ -101,6 +102,7 @@ impl GameState {
             font: geng::Font::new(geng, include_bytes!("../static/virilica.otf").to_vec()).unwrap(),
             time: if skip_intro { Some(0.0) } else { None },
             pressed_location: None,
+            tsunami_animation: 0.0,
         }
     }
     fn to_screen(&self, framebuffer: &ugli::Framebuffer, position: Vec3<f32>) -> (Vec2<f32>, f32) {
@@ -334,7 +336,8 @@ impl geng::State for GameState {
                 sprites.push(character.draw());
             }
             sprites.push((
-                &self.assets.tsunami,
+                &self.assets.tsunami
+                    [(self.tsunami_animation * self.assets.tsunami.len() as f32) as usize],
                 vec3(0.0, self.tsunami_position, 0.0),
                 vec2(0.5, 0.2),
                 Size::Fixed(1000.0, 2.0),
@@ -586,6 +589,10 @@ impl geng::State for GameState {
         } else if self.tsunami_position < self.near_distance + self.camera_near {
             self.time = Some(self.time.unwrap() + delta_time);
         }
+        self.tsunami_animation += 6.0 * delta_time;
+        while self.tsunami_animation >= 1.0 {
+            self.tsunami_animation -= 1.0;
+        }
         if self.tsunami_position < -4.0 {
             delta_time *= -self.tsunami_position;
         } else if self.player.state == character::State::Run {
@@ -784,7 +791,36 @@ fn main() {
                 assets.road.set_wrap_mode(ugli::WrapMode::Repeat);
                 assets.sand_road.set_wrap_mode(ugli::WrapMode::Repeat);
                 assets.pierce.set_wrap_mode(ugli::WrapMode::Repeat);
-                assets.tsunami.set_wrap_mode(ugli::WrapMode::Repeat);
+                fn prev_pot(n: usize) -> usize {
+                    let mut x = 1;
+                    while x * 2 <= n {
+                        x *= 2;
+                    }
+                    x
+                }
+                for frame in &mut assets.tsunami.frames {
+                    let mut texture = ugli::Texture::new_uninitialized(
+                        geng.ugli(),
+                        vec2(prev_pot(frame.size().x), prev_pot(frame.size().y)),
+                    );
+                    let texture_size = texture.size();
+                    let mut framebuffer = ugli::Framebuffer::new_color(
+                        geng.ugli(),
+                        ugli::ColorAttachment::Texture(&mut texture),
+                    );
+                    ugli::clear(&mut framebuffer, Some(Color::TRANSPARENT_BLACK), None);
+                    geng.draw_2d().textured_quad(
+                        &mut framebuffer,
+                        AABB::pos_size(
+                            vec2(0.0, texture_size.y as f32),
+                            vec2(texture_size.x as f32, -(texture_size.y as f32)),
+                        ),
+                        frame,
+                        Color::WHITE,
+                    );
+                    texture.set_wrap_mode(ugli::WrapMode::Repeat);
+                    *frame = texture;
+                }
                 GameState::new(&geng, Rc::new(assets), false)
             }
         }),
