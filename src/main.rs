@@ -56,6 +56,7 @@ struct Assets {
     road: ugli::Texture,
     sand_road: ugli::Texture,
     pierce: ugli::Texture,
+    sit: ugli::Texture,
 }
 
 struct GameState {
@@ -82,7 +83,7 @@ struct GameState {
 
 impl GameState {
     pub fn new(geng: &Rc<Geng>, assets: Rc<Assets>, skip_intro: bool) -> Self {
-        let player = Character::new(assets.character.clone(), vec2(0.0, 1.0));
+        let player = Character::new(assets.character.clone(), vec2(0.0, 0.2));
         Self {
             geng: geng.clone(),
             assets,
@@ -331,7 +332,15 @@ impl geng::State for GameState {
                     Size::FixedWidth(0.28),
                 ));
             }
-            sprites.push(self.player.draw());
+            if self.tsunami_position < -4.0 {
+                let mut result = self.player.draw();
+                result.0 = &self.assets.sit;
+                result.2.y = 0.3;
+                result.3 = Size::FixedWidth(PLAYER_SIZE * 4.0);
+                sprites.push(result);
+            } else {
+                sprites.push(self.player.draw());
+            }
             for character in &self.characters {
                 sprites.push(character.draw());
             }
