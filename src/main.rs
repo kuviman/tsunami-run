@@ -464,7 +464,9 @@ impl geng::State for GameState {
                 let mut character = Character::new(
                     self.assets.character.clone(),
                     vec2(
-                        rand::thread_rng().gen_range(-self.road_ratio..=self.road_ratio),
+                        rand::thread_rng().gen_range(
+                            -self.road_ratio + PLAYER_SIZE..=self.road_ratio - PLAYER_SIZE,
+                        ),
                         self.next_obstacle,
                     ),
                 );
