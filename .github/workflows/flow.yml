@@ -42,3 +42,42 @@ jobs:
           ITCH_GAME: tsunami-run
           ITCH_USER: kuviman
           PACKAGE: target/geng
+  native:
+    name: Build (Native)
+    runs-on: ${{ matrix.platform.runs-on }}
+    strategy:
+      matrix:
+        platform:
+          - runs-on: ubuntu-latest
+            channel: linux
+          - runs-on: macos-latest
+            channel: mac
+          - runs-on: windows-latest
+            channel: windows
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Install cargo-geng
+        run: cargo install cargo-geng --git https://github.com/kuviman/geng
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: geng
+          args: build --release
+
+      - name: Upload itch.io (Web)
+        uses: josephbmanley/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
+          CHANNEL: ${{ matrix.platform.channel }}
+          ITCH_GAME: tsunami-run
+          ITCH_USER: kuviman
+          PACKAGE: target/geng
