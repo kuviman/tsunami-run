@@ -507,7 +507,7 @@ impl geng::State for GameState {
             y -= font_size;
             self.font.draw_aligned(
                 framebuffer,
-                "программирование - kuviman",
+                "кодирование - kuviman",
                 vec2(framebuffer_size.x as f32 / 2.0, y),
                 0.5,
                 font_size,
