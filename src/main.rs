@@ -54,6 +54,8 @@ struct Assets {
     cars: Vec<Rc<ugli::Texture>>,
     tsunami: ugli::Texture,
     road: ugli::Texture,
+    sand_road: ugli::Texture,
+    pierce: ugli::Texture,
 }
 
 struct GameState {
@@ -76,7 +78,7 @@ struct GameState {
 
 impl GameState {
     pub fn new(geng: &Rc<Geng>, assets: Rc<Assets>) -> Self {
-        let mut player = Character::new(assets.character.clone(), vec2(0.0, 5.0));
+        let mut player = Character::new(assets.character.clone(), vec2(0.0, 1.0));
         player.velocity.y = 1.0;
         Self {
             geng: geng.clone(),
@@ -89,8 +91,8 @@ impl GameState {
             road_ratio: 0.5,
             player,
             characters: Vec::new(),
-            tsunami_position: 0.0,
-            next_house: 0.0,
+            tsunami_position: -4.0,
+            next_house: BEACH_START + 1.0,
             next_obstacle: 10.0,
             game_speed: 1.0,
             transition: None,
@@ -175,6 +177,8 @@ impl GameState {
         far_pos: f32,
         texture: &ugli::Texture,
     ) {
+        let near_pos = near_pos.max(self.far_distance);
+        let far_pos = far_pos.min(self.near_distance);
         if far_pos < near_pos {
             return;
         }
@@ -232,21 +236,27 @@ impl GameState {
         self.geng.draw_2d().draw_textured(
             framebuffer,
             &road,
-            &self.assets.road,
+            texture,
             Color::WHITE,
             ugli::DrawMode::Triangles,
         );
     }
 }
 
-const BEACH_START: f32 = 1.0;
+const BEACH_START: f32 = 2.0;
 const BEACH_END: f32 = 20.0;
 
 impl geng::State for GameState {
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
         let framebuffer_size = framebuffer.size();
         ugli::clear(framebuffer, Some(Color::rgb(0.8, 0.8, 1.0)), None);
-        let beach_start = self.to_screen(framebuffer, vec3(0.0, 0.0, 0.0)).0.y;
+        let beach_start = self
+            .to_screen(
+                framebuffer,
+                vec3(0.0, BEACH_START.min(self.near_distance), 0.0),
+            )
+            .0
+            .y;
         let beach_end = self
             .to_screen(
                 &framebuffer,
@@ -283,6 +293,18 @@ impl geng::State for GameState {
             BEACH_END,
             self.near_distance,
             &self.assets.road,
+        );
+        self.draw_road(
+            framebuffer,
+            BEACH_START.min(self.near_distance),
+            BEACH_END.min(self.near_distance),
+            &self.assets.sand_road,
+        );
+        self.draw_road(
+            framebuffer,
+            0.0,
+            BEACH_START.min(self.near_distance),
+            &self.assets.pierce,
         );
         let mut sprites: Vec<(&ugli::Texture, Vec3<f32>, Vec2<f32>, Size)> = Vec::new();
         for (position, texture) in &self.houses {
@@ -325,7 +347,6 @@ impl geng::State for GameState {
                 let vt2 = texture_width / 2.0 + 0.5;
                 let y1 = y;
                 let y2 = y1 + size;
-                println!("{}/{}", y1, y2);
                 self.geng.draw_2d().draw_textured(
                     framebuffer,
                     &[
@@ -511,6 +532,8 @@ fn main() {
             move |assets| {
                 let mut assets = assets.unwrap();
                 assets.road.set_wrap_mode(ugli::WrapMode::Repeat);
+                assets.sand_road.set_wrap_mode(ugli::WrapMode::Repeat);
+                assets.pierce.set_wrap_mode(ugli::WrapMode::Repeat);
                 assets.tsunami.set_wrap_mode(ugli::WrapMode::Repeat);
                 GameState::new(&geng, Rc::new(assets))
             }
