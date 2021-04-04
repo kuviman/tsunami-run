@@ -59,6 +59,8 @@ struct Assets {
     sit: ugli::Texture,
     #[asset(path = "music.mp3")]
     music: geng::Sound,
+    hit: geng::Sound,
+    cry: geng::Sound,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -321,6 +323,9 @@ const BEACH_END: f32 = 20.0;
 
 impl geng::State for GameState {
     fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
+        if self.time.is_some() && self.music.is_none() {
+            self.music = Some(self.assets.music.play());
+        }
         let framebuffer_size = framebuffer.size();
         ugli::clear(framebuffer, Some(Color::rgb(0.8, 0.8, 1.0)), None);
         let beach_start = self
@@ -486,6 +491,9 @@ impl geng::State for GameState {
                     Color::BLACK,
                 );
             } else {
+                if let Some(music) = &mut self.music {
+                    music.pause();
+                }
                 self.geng.draw_2d().quad(
                     framebuffer,
                     AABB::pos_size(vec2(0.0, 0.0), framebuffer_size.map(|x| x as f32)),
@@ -692,6 +700,11 @@ impl geng::State for GameState {
         }
         let delta_time = delta_time * self.game_speed;
         if self.player.state == character::State::Run && self.tsunami_position > -4.0 {
+            if self.player.velocity.y == 0.0 {
+                let mut sound = self.assets.cry.effect();
+                sound.set_volume(self.ui_state.volume());
+                sound.play();
+            }
             let mut velocity = vec2(0.0, 1.0);
             if self.geng.window().is_key_pressed(geng::Key::Left)
                 || self.geng.window().is_key_pressed(geng::Key::A)
@@ -723,6 +736,7 @@ impl geng::State for GameState {
             self.player.position.x,
             -self.road_ratio + PLAYER_SIZE..=self.road_ratio - PLAYER_SIZE,
         );
+        let was_ok = self.player.state == character::State::Run;
         for &(position, _) in &self.obstacles {
             for character in self
                 .characters
@@ -746,6 +760,11 @@ impl geng::State for GameState {
                 self.player.fall();
                 character.fall_side();
             }
+        }
+        if self.player.state != character::State::Run && was_ok {
+            let mut sound = self.assets.hit.effect();
+            sound.set_volume(self.ui_state.volume());
+            sound.play();
         }
         self.tsunami_position += delta_time;
         self.look_at(self.player.position.y);
@@ -827,7 +846,6 @@ impl geng::State for GameState {
             | geng::Event::TouchStart { .. } => {
                 if self.time.is_none() {
                     self.time = Some(0.0);
-                    self.music = Some(self.assets.music.play());
                 } else if self.tsunami_position > self.camera_near + self.near_distance {
                     self.transition = Some(geng::Transition::Switch(Box::new(GameState::new(
                         &self.geng,
