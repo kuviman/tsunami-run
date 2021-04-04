@@ -61,6 +61,60 @@ struct Assets {
     music: geng::Sound,
 }
 
+#[derive(Serialize, Deserialize)]
+struct Settings {
+    volume: f64,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self { volume: 0.5 }
+    }
+}
+
+struct UiState {
+    geng: Rc<Geng>,
+    font: Rc<geng::Font>,
+    settings: AutoSave<Settings>,
+    volume_slider: geng::ui::Slider,
+}
+
+impl UiState {
+    fn new(geng: &Rc<Geng>, font: Rc<geng::Font>) -> Self {
+        let ui_theme = Rc::new(geng::ui::Theme::default(geng));
+        Self {
+            geng: geng.clone(),
+            font,
+            settings: AutoSave::load(".settings"),
+            volume_slider: geng::ui::Slider::new(&ui_theme),
+        }
+    }
+    fn volume(&self) -> f64 {
+        return self.settings.volume * 0.2;
+    }
+    fn ui<'a>(&'a mut self) -> impl geng::ui::Widget + 'a {
+        use geng::ui;
+        use geng::ui::*;
+        let settings = &mut self.settings;
+        let current_volume = settings.volume;
+        ui::row![
+            geng::ui::Text::new("громкость", &self.font, 24.0, Color::BLACK).padding_right(24.0),
+            self.volume_slider
+                .ui(
+                    current_volume,
+                    0.0..=1.0,
+                    Box::new(move |new_value| {
+                        settings.volume = new_value;
+                    })
+                )
+                .fixed_size(vec2(100.0, 24.0)),
+        ]
+        .padding_bottom(24.0)
+        .padding_right(24.0)
+        .align(vec2(1.0, 0.0))
+    }
+}
+
 struct GameState {
     geng: Rc<Geng>,
     assets: Rc<Assets>,
@@ -77,16 +131,21 @@ struct GameState {
     characters: Vec<Character>,
     game_speed: f32,
     transition: Option<geng::Transition>,
-    font: geng::Font,
+    font: Rc<geng::Font>,
     time: Option<f32>,
     pressed_location: Option<f32>,
     tsunami_animation: f32,
     music: Option<geng::SoundEffect>,
+    ui_state: UiState,
+    ui_controller: geng::ui::Controller,
 }
 
 impl GameState {
     pub fn new(geng: &Rc<Geng>, assets: Rc<Assets>, skip_intro: bool) -> Self {
         let player = Character::new(assets.character.clone(), vec2(0.0, 0.2));
+        let font = Rc::new(
+            geng::Font::new(geng, include_bytes!("../static/virilica.otf").to_vec()).unwrap(),
+        );
         Self {
             geng: geng.clone(),
             assets,
@@ -103,11 +162,13 @@ impl GameState {
             next_obstacle: 10.0,
             game_speed: 1.0,
             transition: None,
-            font: geng::Font::new(geng, include_bytes!("../static/virilica.otf").to_vec()).unwrap(),
+            font: font.clone(),
             time: if skip_intro { Some(0.0) } else { None },
             pressed_location: None,
             tsunami_animation: 0.0,
             music: None,
+            ui_state: UiState::new(geng, font.clone()),
+            ui_controller: geng::ui::Controller::new(),
         }
     }
     fn to_screen(&self, framebuffer: &ugli::Framebuffer, position: Vec3<f32>) -> (Vec2<f32>, f32) {
@@ -594,8 +655,15 @@ impl geng::State for GameState {
                 Color::rgb(0.1, 0.1, 0.1),
             );
         }
+        self.ui_controller
+            .draw(&mut self.ui_state.ui(), framebuffer);
     }
     fn update(&mut self, delta_time: f64) {
+        self.ui_controller
+            .update(&mut self.ui_state.ui(), delta_time);
+        if let Some(music) = &mut self.music {
+            music.set_volume(self.ui_state.volume());
+        }
         let mut delta_time = delta_time as f32;
         if self.time.is_none() {
             delta_time = 0.0;
@@ -738,6 +806,12 @@ impl geng::State for GameState {
         }
     }
     fn handle_event(&mut self, event: geng::Event) {
+        if self
+            .ui_controller
+            .handle_event(&mut self.ui_state.ui(), event.clone())
+        {
+            return;
+        }
         match event {
             geng::Event::KeyDown { .. }
             | geng::Event::MouseDown { .. }
