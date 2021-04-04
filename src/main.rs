@@ -114,8 +114,8 @@ impl UiState {
                 .fixed_size(vec2(100.0, 24.0)),
         ]
         .padding_bottom(24.0)
-        .padding_right(24.0)
-        .align(vec2(1.0, 0.0))
+        .padding_left(24.0)
+        .align(vec2(0.0, 0.0))
     }
 }
 
