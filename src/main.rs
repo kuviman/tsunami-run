@@ -79,7 +79,6 @@ struct GameState {
 impl GameState {
     pub fn new(geng: &Rc<Geng>, assets: Rc<Assets>) -> Self {
         let mut player = Character::new(assets.character.clone(), vec2(0.0, 1.0));
-        player.velocity.y = 1.0;
         Self {
             geng: geng.clone(),
             assets,
@@ -91,7 +90,7 @@ impl GameState {
             road_ratio: 0.5,
             player,
             characters: Vec::new(),
-            tsunami_position: -4.0,
+            tsunami_position: -500.0,
             next_house: BEACH_START + 1.0,
             next_obstacle: 10.0,
             game_speed: 1.0,
@@ -321,7 +320,7 @@ impl geng::State for GameState {
                     texture,
                     position.extend(0.0),
                     vec2(0.5, 0.0),
-                    Size::FixedWidth(0.23),
+                    Size::FixedWidth(0.28),
                 ));
             }
             sprites.push(self.player.draw());
@@ -391,14 +390,16 @@ impl geng::State for GameState {
         }
     }
     fn update(&mut self, delta_time: f64) {
-        let delta_time = delta_time as f32;
-        if self.player.state == character::State::Run {
+        let mut delta_time = delta_time as f32;
+        if self.tsunami_position < -4.0 {
+            delta_time *= -self.tsunami_position;
+        } else if self.player.state == character::State::Run {
             self.game_speed += 0.05 * delta_time;
         } else {
             self.game_speed = 2.0;
         }
         let delta_time = delta_time * self.game_speed;
-        if self.player.state == character::State::Run {
+        if self.player.state == character::State::Run && self.tsunami_position > -4.0 {
             let mut velocity = vec2(0.0, 1.0);
             if self.geng.window().is_key_pressed(geng::Key::Left) {
                 velocity.x -= 1.0;

@@ -56,7 +56,7 @@ impl Character {
             texture,
             self.position.extend(0.0),
             origin,
-            Size::FixedWidth(PLAYER_SIZE * 2.0 * size),
+            Size::FixedWidth(PLAYER_SIZE * 2.5 * size),
         )
     }
     pub fn check_hit(&mut self, obstacle_position: Vec2<f32>, obstacle_size: f32) -> bool {
