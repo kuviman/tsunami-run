@@ -74,11 +74,14 @@ struct GameState {
     characters: Vec<Character>,
     game_speed: f32,
     transition: Option<geng::Transition>,
+    font: geng::Font,
+    time: Option<f32>,
+    pressed_location: Option<f32>,
 }
 
 impl GameState {
-    pub fn new(geng: &Rc<Geng>, assets: Rc<Assets>) -> Self {
-        let mut player = Character::new(assets.character.clone(), vec2(0.0, 1.0));
+    pub fn new(geng: &Rc<Geng>, assets: Rc<Assets>, skip_intro: bool) -> Self {
+        let player = Character::new(assets.character.clone(), vec2(0.0, 1.0));
         Self {
             geng: geng.clone(),
             assets,
@@ -95,6 +98,9 @@ impl GameState {
             next_obstacle: 10.0,
             game_speed: 1.0,
             transition: None,
+            font: geng::Font::new(geng, include_bytes!("../static/virilica.otf").to_vec()).unwrap(),
+            time: if skip_intro { Some(0.0) } else { None },
+            pressed_location: None,
         }
     }
     fn to_screen(&self, framebuffer: &ugli::Framebuffer, position: Vec3<f32>) -> (Vec2<f32>, f32) {
@@ -388,9 +394,198 @@ impl geng::State for GameState {
                 Color::rgba(0.0, 0.5, 1.0, 0.5),
             );
         }
+        let font_size = framebuffer_size.y as f32 * 0.05;
+        if let Some(time) = self.time {
+            if self.tsunami_position < self.near_distance + self.camera_near {
+                self.font.draw_aligned(
+                    framebuffer,
+                    &format!("{:.1}", time),
+                    vec2(
+                        framebuffer_size.x as f32 / 2.0,
+                        framebuffer_size.y as f32 - font_size - 10.0,
+                    ),
+                    0.5,
+                    font_size,
+                    Color::BLACK,
+                );
+            } else {
+                self.geng.draw_2d().quad(
+                    framebuffer,
+                    AABB::pos_size(vec2(0.0, 0.0), framebuffer_size.map(|x| x as f32)),
+                    Color::rgba(0.8, 0.8, 1.0, 0.5),
+                );
+                let mut y = framebuffer_size.y as f32 * 0.8;
+                y -= font_size * 2.0;
+                self.font.draw_aligned(
+                    framebuffer,
+                    "ГОРОД под ВОДОЙ",
+                    vec2(framebuffer_size.x as f32 / 2.0, y),
+                    0.5,
+                    font_size * 2.0,
+                    Color::BLACK,
+                );
+                y -= font_size;
+                self.font.draw_aligned(
+                    framebuffer,
+                    "И ты тоже!",
+                    vec2(framebuffer_size.x as f32 / 2.0, y),
+                    0.5,
+                    font_size,
+                    Color::rgb(0.1, 0.1, 0.1),
+                );
+                y -= 2.0 * font_size;
+                self.font.draw_aligned(
+                    framebuffer,
+                    "Ты продержался",
+                    vec2(framebuffer_size.x as f32 / 2.0, y),
+                    0.5,
+                    font_size * 2.0,
+                    Color::rgb(0.1, 0.1, 0.1),
+                );
+                y -= 2.0 * font_size;
+                self.font.draw_aligned(
+                    framebuffer,
+                    &format!("целых {:.1} секунд!", time),
+                    vec2(framebuffer_size.x as f32 / 2.0, y),
+                    0.5,
+                    font_size * 2.0,
+                    Color::rgb(0.1, 0.1, 0.1),
+                );
+                y -= font_size;
+                self.font.draw_aligned(
+                    framebuffer,
+                    "Вот это да!",
+                    vec2(framebuffer_size.x as f32 / 2.0, y),
+                    0.5,
+                    font_size,
+                    Color::rgb(0.1, 0.1, 0.1),
+                );
+                y -= font_size;
+                self.font.draw_aligned(
+                    framebuffer,
+                    "Поздравляю!",
+                    vec2(framebuffer_size.x as f32 / 2.0, y),
+                    0.5,
+                    font_size,
+                    Color::rgb(0.1, 0.1, 0.1),
+                );
+                y -= font_size;
+                self.font.draw_aligned(
+                    framebuffer,
+                    "Ты молодец!",
+                    vec2(framebuffer_size.x as f32 / 2.0, y),
+                    0.5,
+                    font_size,
+                    Color::rgb(0.1, 0.1, 0.1),
+                );
+                y -= 3.0 * font_size;
+                self.font.draw_aligned(
+                    framebuffer,
+                    "Любой клик - рестарт",
+                    vec2(framebuffer_size.x as f32 / 2.0, y),
+                    0.5,
+                    font_size,
+                    Color::rgb(0.1, 0.1, 0.1),
+                );
+            }
+        } else {
+            self.geng.draw_2d().quad(
+                framebuffer,
+                AABB::pos_size(vec2(0.0, 0.0), framebuffer_size.map(|x| x as f32)),
+                Color::rgba(0.8, 0.8, 1.0, 0.5),
+            );
+            let mut y = framebuffer_size.y as f32 * 0.8;
+            y -= font_size * 2.0;
+            self.font.draw_aligned(
+                framebuffer,
+                "ПОБЕГ от ЦУНАМИ",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size * 2.0,
+                Color::BLACK,
+            );
+            y -= font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "программирование - kuviman",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+            y -= font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "рисование - mikky_ti",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+            y -= font_size;
+            y -= font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "Надвигается цунами",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+            y -= font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "Город скоро окажется под водой",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+            y -= font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "Сможешь ли ты его спасти? Нет!",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+            y -= font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "Сможешь ли ты спасти себя? Нет!",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+            y -= font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "Сколько сможешь продержаться? Да!",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+            y -= 3.0 * font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "Любой клик - старт",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+        }
     }
     fn update(&mut self, delta_time: f64) {
         let mut delta_time = delta_time as f32;
+        if self.time.is_none() {
+            delta_time = 0.0;
+        } else if self.tsunami_position < self.near_distance + self.camera_near {
+            self.time = Some(self.time.unwrap() + delta_time);
+        }
         if self.tsunami_position < -4.0 {
             delta_time *= -self.tsunami_position;
         } else if self.player.state == character::State::Run {
@@ -401,16 +596,30 @@ impl geng::State for GameState {
         let delta_time = delta_time * self.game_speed;
         if self.player.state == character::State::Run && self.tsunami_position > -4.0 {
             let mut velocity = vec2(0.0, 1.0);
-            if self.geng.window().is_key_pressed(geng::Key::Left) {
+            if self.geng.window().is_key_pressed(geng::Key::Left)
+                || self.geng.window().is_key_pressed(geng::Key::A)
+            {
                 velocity.x -= 1.0;
+                self.pressed_location = None;
             }
-            if self.geng.window().is_key_pressed(geng::Key::Right) {
+            if self.geng.window().is_key_pressed(geng::Key::Right)
+                || self.geng.window().is_key_pressed(geng::Key::D)
+            {
                 velocity.x += 1.0;
+                self.pressed_location = None;
             }
-            if self.geng.window().is_key_pressed(geng::Key::Up) {
-                velocity.y = -1.0;
+            self.player.velocity.x = velocity.x;
+            if let Some(location) = self.pressed_location {
+                let window_size = self.geng.window().size();
+                let target = (location - window_size.x as f32 / 2.0)
+                    / (min(window_size.x, window_size.y) as f32 / 2.0);
+                self.player.velocity.x = clamp_abs(
+                    (target * self.road_ratio - self.player.position.x) * 10.0,
+                    1.0,
+                );
             }
-            self.player.velocity = velocity;
+            self.player.velocity.y +=
+                clamp_abs(velocity.y - self.player.velocity.y, delta_time * 5.0);
         }
         self.player.update(delta_time);
         self.player.position.x = clamp(
@@ -509,10 +718,48 @@ impl geng::State for GameState {
         }
     }
     fn handle_event(&mut self, event: geng::Event) {
+        match event {
+            geng::Event::KeyDown { .. }
+            | geng::Event::MouseDown { .. }
+            | geng::Event::TouchStart { .. } => {
+                if self.time.is_none() {
+                    self.time = Some(0.0);
+                } else if self.tsunami_position > self.camera_near + self.near_distance {
+                    self.transition = Some(geng::Transition::Switch(Box::new(GameState::new(
+                        &self.geng,
+                        self.assets.clone(),
+                        true,
+                    ))));
+                }
+            }
+            _ => {}
+        }
+        match event {
+            geng::Event::MouseDown { position, .. } => {
+                self.pressed_location = Some(position.x as f32);
+            }
+            geng::Event::MouseMove { position, .. } if self.pressed_location.is_some() => {
+                self.pressed_location = Some(position.x as f32);
+            }
+            geng::Event::MouseUp { .. } => {
+                self.pressed_location = None;
+            }
+            geng::Event::TouchStart { ref touches, .. } => {
+                self.pressed_location = Some(touches[0].position.x as f32);
+            }
+            geng::Event::TouchMove { ref touches, .. } if self.pressed_location.is_some() => {
+                self.pressed_location = Some(touches[0].position.x as f32);
+            }
+            geng::Event::TouchEnd { .. } => {
+                self.pressed_location = None;
+            }
+            _ => {}
+        }
         if let geng::Event::KeyDown { key: geng::Key::R } = event {
             self.transition = Some(geng::Transition::Switch(Box::new(GameState::new(
                 &self.geng,
                 self.assets.clone(),
+                false,
             ))));
         }
     }
@@ -538,7 +785,7 @@ fn main() {
                 assets.sand_road.set_wrap_mode(ugli::WrapMode::Repeat);
                 assets.pierce.set_wrap_mode(ugli::WrapMode::Repeat);
                 assets.tsunami.set_wrap_mode(ugli::WrapMode::Repeat);
-                GameState::new(&geng, Rc::new(assets))
+                GameState::new(&geng, Rc::new(assets), false)
             }
         }),
     )
