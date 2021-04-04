@@ -574,6 +574,15 @@ impl geng::State for GameState {
                     font_size,
                     Color::rgb(0.1, 0.1, 0.1),
                 );
+                y -= font_size;
+                self.font.draw_aligned(
+                    framebuffer,
+                    "R - начальные титры",
+                    vec2(framebuffer_size.x as f32 / 2.0, y),
+                    0.5,
+                    font_size,
+                    Color::rgb(0.1, 0.1, 0.1),
+                );
             }
         } else {
             self.geng.draw_2d().quad(
@@ -665,6 +674,15 @@ impl geng::State for GameState {
                 Color::rgb(0.1, 0.1, 0.1),
             );
             y -= 3.0 * font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "Управление - интуитивное",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+            y -= font_size;
             self.font.draw_aligned(
                 framebuffer,
                 "Любой клик - старт",
