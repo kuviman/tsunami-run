@@ -57,6 +57,8 @@ struct Assets {
     sand_road: ugli::Texture,
     pierce: ugli::Texture,
     sit: ugli::Texture,
+    #[asset(path = "music.mp3")]
+    music: geng::Sound,
 }
 
 struct GameState {
@@ -79,6 +81,7 @@ struct GameState {
     time: Option<f32>,
     pressed_location: Option<f32>,
     tsunami_animation: f32,
+    music: Option<geng::SoundEffect>,
 }
 
 impl GameState {
@@ -104,6 +107,7 @@ impl GameState {
             time: if skip_intro { Some(0.0) } else { None },
             pressed_location: None,
             tsunami_animation: 0.0,
+            music: None,
         }
     }
     fn to_screen(&self, framebuffer: &ugli::Framebuffer, position: Vec3<f32>) -> (Vec2<f32>, f32) {
@@ -740,6 +744,7 @@ impl geng::State for GameState {
             | geng::Event::TouchStart { .. } => {
                 if self.time.is_none() {
                     self.time = Some(0.0);
+                    self.music = Some(self.assets.music.play());
                 } else if self.tsunami_position > self.camera_near + self.near_distance {
                     self.transition = Some(geng::Transition::Switch(Box::new(GameState::new(
                         &self.geng,
@@ -781,6 +786,14 @@ impl geng::State for GameState {
     }
     fn transition(&mut self) -> Option<geng::Transition> {
         self.transition.take()
+    }
+}
+
+impl Drop for GameState {
+    fn drop(&mut self) {
+        if let Some(music) = &mut self.music {
+            music.pause();
+        }
     }
 }
 
@@ -830,6 +843,7 @@ fn main() {
                     texture.set_wrap_mode(ugli::WrapMode::Repeat);
                     *frame = texture;
                 }
+                assets.music.looped = true;
                 GameState::new(&geng, Rc::new(assets), false)
             }
         }),
