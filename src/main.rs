@@ -14,6 +14,7 @@ pub struct Animation {
 }
 
 pub enum Size {
+    Fixed(f32, f32),
     FixedWidth(f32),
     FixedHeight(f32),
 }
@@ -122,15 +123,21 @@ impl GameState {
             return;
         }
         let (screen_position, scale) = self.to_screen(framebuffer, position);
-        let height = match size {
-            Size::FixedHeight(height) => framebuffer.size().y as f32 * 0.8 * height * scale,
-            Size::FixedWidth(width) => {
-                let height = width * texture.size().y as f32 / texture.size().x as f32;
-                framebuffer.size().y as f32 * 0.8 * height * scale
+        let size = match size {
+            Size::Fixed(width, height) => vec2(width, height),
+            _ => {
+                let height = match size {
+                    Size::FixedHeight(height) => framebuffer.size().y as f32 * 0.8 * height * scale,
+                    Size::FixedWidth(width) => {
+                        let height = width * texture.size().y as f32 / texture.size().x as f32;
+                        framebuffer.size().y as f32 * 0.8 * height * scale
+                    }
+                    _ => unreachable!(),
+                };
+                let size = texture.size().map(|x| x as f32);
+                vec2(height * size.x / size.y, height)
             }
         };
-        let size = texture.size().map(|x| x as f32);
-        let size = vec2(height * size.x / size.y, height);
         let aabb = AABB::pos_size(
             screen_position - vec2(size.x * origin.x, size.y * origin.y),
             size,
@@ -161,54 +168,21 @@ impl GameState {
     fn game_finished(&self) -> bool {
         self.tsunami_position > self.near_distance + self.camera_near
     }
-}
-
-const BEACH_START: f32 = 1.0;
-const BEACH_END: f32 = 20.0;
-
-impl geng::State for GameState {
-    fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
-        let framebuffer_size = framebuffer.size();
-        ugli::clear(framebuffer, Some(Color::rgb(0.8, 0.8, 1.0)), None);
-        let beach_start = self.to_screen(framebuffer, vec3(0.0, 0.0, 0.0)).0.y;
-        let beach_end = self
-            .to_screen(
-                &framebuffer,
-                vec3(0.0, BEACH_END.min(self.near_distance), 0.0),
-            )
-            .0
-            .y;
-        self.geng.draw_2d().quad(
-            framebuffer,
-            AABB::pos_size(
-                vec2(0.0, beach_start),
-                vec2(
-                    framebuffer_size.x as f32,
-                    framebuffer_size.y as f32 * 0.8 - beach_start,
-                ),
-            ),
-            Color::rgb(0.0, 0.0, 1.0),
-        );
-        self.geng.draw_2d().quad(
-            framebuffer,
-            AABB::pos_size(
-                vec2(0.0, beach_start),
-                vec2(framebuffer_size.x as f32, beach_end - beach_start),
-            ),
-            Color::rgb(1.0, 1.0, 0.0),
-        );
-        self.geng.draw_2d().quad(
-            framebuffer,
-            AABB::pos_size(vec2(0.0, 0.0), vec2(framebuffer_size.x as f32, beach_end)),
-            Color::rgb(0.0, 0.7, 0.0),
-        );
+    fn draw_road(
+        &self,
+        framebuffer: &mut ugli::Framebuffer,
+        near_pos: f32,
+        far_pos: f32,
+        texture: &ugli::Texture,
+    ) {
+        if far_pos < near_pos {
+            return;
+        }
         let mut road = Vec::new();
         const N: usize = 1000; // DIRTY HACK KEK
         for i in 0..N {
-            let near =
-                self.near_distance + (self.far_distance - self.near_distance) * i as f32 / N as f32;
-            let far = self.near_distance
-                + (self.far_distance - self.near_distance) * (i + 1) as f32 / N as f32;
+            let near = near_pos + (far_pos - near_pos) * i as f32 / N as f32;
+            let far = near_pos + (far_pos - near_pos) * (i + 1) as f32 / N as f32;
             road.push(geng::draw_2d::TexturedVertex {
                 a_pos: self
                     .to_screen(framebuffer, vec3(-self.road_ratio, far, 0.0))
@@ -262,6 +236,54 @@ impl geng::State for GameState {
             Color::WHITE,
             ugli::DrawMode::Triangles,
         );
+    }
+}
+
+const BEACH_START: f32 = 1.0;
+const BEACH_END: f32 = 20.0;
+
+impl geng::State for GameState {
+    fn draw(&mut self, framebuffer: &mut ugli::Framebuffer) {
+        let framebuffer_size = framebuffer.size();
+        ugli::clear(framebuffer, Some(Color::rgb(0.8, 0.8, 1.0)), None);
+        let beach_start = self.to_screen(framebuffer, vec3(0.0, 0.0, 0.0)).0.y;
+        let beach_end = self
+            .to_screen(
+                &framebuffer,
+                vec3(0.0, BEACH_END.min(self.near_distance), 0.0),
+            )
+            .0
+            .y;
+        self.geng.draw_2d().quad(
+            framebuffer,
+            AABB::pos_size(
+                vec2(0.0, beach_start),
+                vec2(
+                    framebuffer_size.x as f32,
+                    framebuffer_size.y as f32 * 0.8 - beach_start,
+                ),
+            ),
+            Color::rgb(0.0, 0.0, 1.0),
+        );
+        self.geng.draw_2d().quad(
+            framebuffer,
+            AABB::pos_size(
+                vec2(0.0, beach_start),
+                vec2(framebuffer_size.x as f32, beach_end - beach_start),
+            ),
+            Color::rgb(1.0, 1.0, 0.0),
+        );
+        self.geng.draw_2d().quad(
+            framebuffer,
+            AABB::pos_size(vec2(0.0, 0.0), vec2(framebuffer_size.x as f32, beach_end)),
+            Color::rgb(0.0, 0.7, 0.0),
+        );
+        self.draw_road(
+            framebuffer,
+            BEACH_END,
+            self.near_distance,
+            &self.assets.road,
+        );
         let mut sprites: Vec<(&ugli::Texture, Vec3<f32>, Vec2<f32>, Size)> = Vec::new();
         for (position, texture) in &self.houses {
             sprites.push((
@@ -288,12 +310,53 @@ impl geng::State for GameState {
                 &self.assets.tsunami,
                 vec3(0.0, self.tsunami_position, 0.0),
                 vec2(0.5, 0.2),
-                Size::FixedHeight(2.0),
+                Size::Fixed(1000.0, 2.0),
             ));
         }
         sprites.sort_by_key(|&(_, pos, _, _)| r32(pos.y));
         for (texture, position, origin, size) in sprites {
-            self.draw_texture(framebuffer, texture, position, origin, size);
+            if let Size::Fixed(_, height) = size {
+                let (pos, scale) = self.to_screen(framebuffer, position);
+                let size = height * scale * framebuffer_size.y as f32 * 0.8;
+                let y = pos.y - size * origin.y;
+                let texture_width = framebuffer_size.x as f32
+                    / (size * texture.size().x as f32 / texture.size().y as f32);
+                let vt1 = -texture_width / 2.0 + 0.5;
+                let vt2 = texture_width / 2.0 + 0.5;
+                let y1 = y;
+                let y2 = y1 + size;
+                println!("{}/{}", y1, y2);
+                self.geng.draw_2d().draw_textured(
+                    framebuffer,
+                    &[
+                        geng::draw_2d::TexturedVertex {
+                            a_color: Color::WHITE,
+                            a_pos: vec2(0.0, y1),
+                            a_vt: vec2(vt1, 0.0),
+                        },
+                        geng::draw_2d::TexturedVertex {
+                            a_color: Color::WHITE,
+                            a_pos: vec2(framebuffer_size.x as f32, y1),
+                            a_vt: vec2(vt2, 0.0),
+                        },
+                        geng::draw_2d::TexturedVertex {
+                            a_color: Color::WHITE,
+                            a_pos: vec2(framebuffer_size.x as f32, y2),
+                            a_vt: vec2(vt2, 1.0),
+                        },
+                        geng::draw_2d::TexturedVertex {
+                            a_color: Color::WHITE,
+                            a_pos: vec2(0.0, y2),
+                            a_vt: vec2(vt1, 1.0),
+                        },
+                    ],
+                    texture,
+                    Color::WHITE,
+                    ugli::DrawMode::TriangleFan,
+                );
+            } else {
+                self.draw_texture(framebuffer, texture, position, origin, size);
+            }
         }
         if self.game_finished() {
             self.geng.draw_2d().quad(
@@ -308,7 +371,11 @@ impl geng::State for GameState {
     }
     fn update(&mut self, delta_time: f64) {
         let delta_time = delta_time as f32;
-        self.game_speed += 0.05 * delta_time;
+        if self.player.state == character::State::Run {
+            self.game_speed += 0.05 * delta_time;
+        } else {
+            self.game_speed = 2.0;
+        }
         let delta_time = delta_time * self.game_speed;
         if self.player.state == character::State::Run {
             let mut velocity = vec2(0.0, 1.0);
@@ -340,6 +407,13 @@ impl geng::State for GameState {
             }
         }
         for character in &mut self.characters {
+            if character.position.y < self.tsunami_position + 1.0 {
+                if rand::thread_rng().gen_bool(0.5) {
+                    character.fall();
+                } else {
+                    character.fall_side();
+                }
+            }
             if self.player.check_hit(character.position, PLAYER_SIZE) {
                 self.player.fall();
                 character.fall_side();
@@ -437,6 +511,7 @@ fn main() {
             move |assets| {
                 let mut assets = assets.unwrap();
                 assets.road.set_wrap_mode(ugli::WrapMode::Repeat);
+                assets.tsunami.set_wrap_mode(ugli::WrapMode::Repeat);
                 GameState::new(&geng, Rc::new(assets))
             }
         }),
