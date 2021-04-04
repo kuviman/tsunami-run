@@ -36,7 +36,7 @@ impl Character {
         match self.state {
             State::Run => {
                 self.position += self.velocity * delta_time;
-                self.animation_position += 3.0 * delta_time;
+                self.animation_position += 3.0 * delta_time * self.velocity.len();
                 while self.animation_position >= 1.0 {
                     self.animation_position -= 1.0;
                 }
