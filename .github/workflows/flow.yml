@@ -2,7 +2,7 @@ name: CI
 on: push
 
 jobs:
-  flow:
+  build-web:
     name: Build (Web)
     runs-on: ubuntu-latest
     steps:
@@ -27,22 +27,13 @@ jobs:
           command: geng
           args: build --release --target wasm32-unknown-unknown --index-file play.html
 
-      - name: Deploy GitHub Pages
-        if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/geng
+          name: web
+          path: target/geng
 
-      - name: Upload itch.io (Web)
-        uses: josephbmanley/butler-publish-itchio-action@master
-        env:
-          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
-          CHANNEL: html5
-          ITCH_GAME: tsunami-run
-          ITCH_USER: kuviman
-          PACKAGE: target/geng
-  native:
+  build-native:
     name: Build (Native)
     runs-on: ${{ matrix.platform.runs-on }}
     strategy:
@@ -77,11 +68,61 @@ jobs:
           command: geng
           args: build --release
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.platform.channel }}
+          path: target/geng
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs:
+      - build-web
+      - build-native
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+
+      - name: Deploy GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: web
+
       - name: Upload itch.io (Web)
         uses: josephbmanley/butler-publish-itchio-action@master
         env:
           BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
-          CHANNEL: ${{ matrix.platform.channel }}
+          CHANNEL: html5
           ITCH_GAME: tsunami-run
           ITCH_USER: kuviman
-          PACKAGE: target/geng
+          PACKAGE: web
+
+      - name: Upload itch.io (Windows)
+        uses: josephbmanley/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
+          CHANNEL: windows
+          ITCH_GAME: tsunami-run
+          ITCH_USER: kuviman
+          PACKAGE: windows
+
+      - name: Upload itch.io (Linux)
+        uses: josephbmanley/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
+          CHANNEL: linux
+          ITCH_GAME: tsunami-run
+          ITCH_USER: kuviman
+          PACKAGE: linux
+
+      - name: Upload itch.io (MacOS)
+        uses: josephbmanley/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
+          CHANNEL: mac
+          ITCH_GAME: tsunami-run
+          ITCH_USER: kuviman
+          PACKAGE: mac
