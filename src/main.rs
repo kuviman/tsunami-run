@@ -59,7 +59,9 @@ struct Assets {
     sit: ugli::Texture,
     #[asset(path = "music.mp3")]
     music: geng::Sound,
+    #[asset(path = "hit.mp3")]
     hit: geng::Sound,
+    #[asset(path = "cry.mp3")]
     cry: geng::Sound,
 }
 

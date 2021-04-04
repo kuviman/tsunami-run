@@ -9,7 +9,6 @@
         * {
             margin: 0;
             padding: 0;
-            text-align: center;
         }
 
         body {
@@ -23,13 +22,13 @@
             height: 100%;
         }
 
-        #error-screen {
+        #geng-error-screen {
             width: 100%;
             height: 100%;
             background-color: black;
         }
 
-        #error-screen .error-container {
+        #geng-error-screen .error-container {
             width: 80%;
             padding: 2em;
             border-radius: 2em;
@@ -107,6 +106,11 @@
     <script type="module">
         import init from "./tsunami-run.js";
         init()
+        function updatevh() {
+            document.getElementsByTagName("body").item(0).style.height = window.innerHeight + "px";
+            requestAnimationFrame(updatevh);
+        }
+        updatevh();
     </script>
 </body>
 
