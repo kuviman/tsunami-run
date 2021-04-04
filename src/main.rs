@@ -406,7 +406,7 @@ impl geng::State for GameState {
                 Color::rgba(0.0, 0.5, 1.0, 0.5),
             );
         }
-        let font_size = framebuffer_size.y as f32 * 0.05;
+        let font_size = (framebuffer_size.y as f32 * 0.05).min(framebuffer_size.x as f32 * 0.03);
         if let Some(time) = self.time {
             if self.tsunami_position < self.near_distance + self.camera_near {
                 self.font.draw_aligned(
