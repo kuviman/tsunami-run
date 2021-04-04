@@ -584,19 +584,28 @@ impl geng::State for GameState {
             y -= font_size;
             self.font.draw_aligned(
                 framebuffer,
-                "кодирование - kuviman",
+                "кодирование - kuviman (Виталя)",
                 vec2(framebuffer_size.x as f32 / 2.0, y),
                 0.5,
-                font_size,
+                font_size * 0.8,
                 Color::rgb(0.1, 0.1, 0.1),
             );
             y -= font_size;
             self.font.draw_aligned(
                 framebuffer,
-                "рисование - mikky_ti",
+                "рисование - mikky_ti (Таня)",
                 vec2(framebuffer_size.x as f32 / 2.0, y),
                 0.5,
-                font_size,
+                font_size * 0.8,
+                Color::rgb(0.1, 0.1, 0.1),
+            );
+            y -= font_size;
+            self.font.draw_aligned(
+                framebuffer,
+                "звучание - AT (Саня)",
+                vec2(framebuffer_size.x as f32 / 2.0, y),
+                0.5,
+                font_size * 0.8,
                 Color::rgb(0.1, 0.1, 0.1),
             );
             y -= font_size;
