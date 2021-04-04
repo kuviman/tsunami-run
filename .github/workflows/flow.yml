@@ -25,7 +25,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: geng
-          args: build --release --target wasm32-unknown-unknown
+          args: build --release --target wasm32-unknown-unknown --index-file play.html
 
       - name: Deploy GitHub Pages
         if: github.ref == 'refs/heads/main'
